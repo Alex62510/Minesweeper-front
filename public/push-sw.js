@@ -40,6 +40,7 @@ self.addEventListener('push', function (event) {
         body: body,
         data: { url: targetUrl },
         icon: data.icon || undefined,
+        requireInteraction: true,
     };
 
     event.waitUntil(self.registration.showNotification(title, options));
