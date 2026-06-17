@@ -88,6 +88,19 @@
         document.getElementById('push-toast-close').addEventListener('click', function () {
             document.getElementById('push-toast').hidden = true;
         });
+        // Восстановить текст кнопки после F5
+        navigator.serviceWorker.ready
+            .then(function (reg) {
+                return reg.pushManager.getSubscription();
+            })
+            .then(function (sub) {
+                if (!sub || Notification.permission !== 'granted') return;
+                var btn = document.getElementById('push-subscribe-btn');
+                if (!btn) return;
+                btn.disabled = true;
+                btn.textContent = 'Notifications enabled';
+            })
+            .catch(function () {});
     }
 </script>
 <script type="module" src="/src/main.tsx"></script>
