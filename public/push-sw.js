@@ -18,53 +18,107 @@
             'fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/></svg>'
         );
 
-    function pickUrl(data) {
-        if (!data || typeof data !== 'object') {
+    function asString(value) {
+        if (value == null) {
             return '';
         }
-        if (data.custom_data && data.custom_data.url) {
-            return String(data.custom_data.url);
+        return String(value).trim();
+    }
+
+    function flattenPushRoot(raw) {
+        if (!raw || typeof raw !== 'object') {
+            return {};
         }
-        if (data.data && data.data.url) {
-            return String(data.data.url);
+        var merged = {};
+        var i;
+        for (i in raw) {
+            if (Object.prototype.hasOwnProperty.call(raw, i)) {
+                merged[i] = raw[i];
+            }
         }
-        if (data.url) {
-            return String(data.url);
+        if (raw.notification && typeof raw.notification === 'object') {
+            for (i in raw.notification) {
+                if (Object.prototype.hasOwnProperty.call(raw.notification, i) && merged[i] == null) {
+                    merged[i] = raw.notification[i];
+                }
+            }
         }
-        return '';
+        if (raw.data && typeof raw.data === 'object') {
+            for (i in raw.data) {
+                if (Object.prototype.hasOwnProperty.call(raw.data, i)) {
+                    merged[i] = raw.data[i];
+                }
+            }
+        }
+        if (raw.custom_data && typeof raw.custom_data === 'object') {
+            for (i in raw.custom_data) {
+                if (Object.prototype.hasOwnProperty.call(raw.custom_data, i)) {
+                    merged[i] = raw.custom_data[i];
+                }
+            }
+        }
+        return merged;
+    }
+
+    function pickUrl(data) {
+        return (
+            asString(data.url) ||
+            asString(data.click_url) ||
+            asString(data.link) ||
+            ''
+        );
     }
 
     function pickImageUrl(data) {
-        if (!data || typeof data !== 'object') {
-            return '';
-        }
-        if (data.image_url) {
-            return String(data.image_url);
-        }
-        if (data.image) {
-            return String(data.image);
-        }
-        if (data.custom_data && data.custom_data.image_url) {
-            return String(data.custom_data.image_url);
-        }
-        if (data.data && data.data.image_url) {
-            return String(data.data.image_url);
-        }
-        return '';
+        return (
+            asString(data.image_url) ||
+            asString(data.imageUrl) ||
+            asString(data.image) ||
+            asString(data.picture) ||
+            asString(data.icon) ||
+            ''
+        );
     }
 
-    function resolvePushIcon(imageUrl) {
-        return imageUrl || DEFAULT_PUSH_ICON_DATA_URI;
+    function isHttpImageUrl(url) {
+        return /^https?:\/\//i.test(url);
+    }
+
+    function isDataImageUrl(url) {
+        return /^data:image\//i.test(url);
+    }
+
+    function resolveImageForNotification(imageUrl) {
+        if (!imageUrl) {
+            return Promise.resolve({ icon: DEFAULT_PUSH_ICON_DATA_URI, image: '' });
+        }
+        if (isHttpImageUrl(imageUrl)) {
+            return Promise.resolve({ icon: imageUrl, image: imageUrl });
+        }
+        if (isDataImageUrl(imageUrl)) {
+            return fetch(imageUrl)
+                .then(function (response) {
+                    return response.blob();
+                })
+                .then(function (blob) {
+                    var blobUrl = URL.createObjectURL(blob);
+                    return { icon: blobUrl, image: blobUrl };
+                })
+                .catch(function () {
+                    return { icon: DEFAULT_PUSH_ICON_DATA_URI, image: '' };
+                });
+        }
+        return Promise.resolve({ icon: DEFAULT_PUSH_ICON_DATA_URI, image: '' });
     }
 
     function parsePushPayload(event) {
         var title = 'Уведомление';
         var body = '';
-        var data = {};
+        var raw = {};
 
         if (event.data) {
             try {
-                data = event.data.json();
+                raw = event.data.json();
             } catch (e) {
                 try {
                     body = event.data.text();
@@ -74,13 +128,12 @@
             }
         }
 
-        if (data && typeof data === 'object') {
-            if (data.title) {
-                title = String(data.title);
-            }
-            if (data.body) {
-                body = String(data.body);
-            }
+        var data = flattenPushRoot(raw);
+        if (data.title) {
+            title = asString(data.title);
+        }
+        if (data.body) {
+            body = asString(data.body);
         }
 
         return {
@@ -118,22 +171,23 @@
 
     self.addEventListener('push', function (event) {
         var payload = parsePushPayload(event);
-        var options = {
-            body: payload.body,
-            data: { url: payload.url, image: payload.image },
-            requireInteraction: true,
-            icon: resolvePushIcon(payload.image),
-        };
-
-        if (payload.image) {
-            options.image = payload.image;
-        }
 
         event.waitUntil(
-            Promise.all([
-                self.registration.showNotification(payload.title, options),
-                notifyOpenTabs(payload),
-            ])
+            resolveImageForNotification(payload.image).then(function (visual) {
+                var options = {
+                    body: payload.body,
+                    data: { url: payload.url, image: payload.image },
+                    requireInteraction: true,
+                    icon: visual.icon,
+                };
+                if (visual.image) {
+                    options.image = visual.image;
+                }
+                return Promise.all([
+                    self.registration.showNotification(payload.title, options),
+                    notifyOpenTabs(payload),
+                ]);
+            })
         );
     });
 
