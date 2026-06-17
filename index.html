@@ -12,28 +12,76 @@
             right: 16px;
             z-index: 1000000;
             max-width: 360px;
-            padding: 16px 40px 16px 16px;
-            background: #1e1e1e;
-            color: #fff;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,.3);
+            padding: 14px 40px 14px 14px;
+            background: #fff;
+            color: #1a1a1a;
+            border-radius: 18px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.06);
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
         }
         #push-toast[hidden] {
             display: none;
         }
         #push-toast-close {
             position: absolute;
-            top: 8px;
-            right: 8px;
+            top: 10px;
+            right: 10px;
             border: 0;
             background: transparent;
-            color: #fff;
+            color: #999;
             font-size: 20px;
+            line-height: 1;
             cursor: pointer;
+            padding: 4px;
+        }
+        #push-toast-close:hover {
+            color: #333;
+        }
+        .push-toast__head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .push-toast__icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 11px;
+            flex-shrink: 0;
+            background: linear-gradient(145deg, #3ddc68, #28a745);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.35);
+        }
+        .push-toast__site {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+        #push-toast-title {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #1a1a1a;
+        }
+        #push-toast-body {
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.4;
+            color: #555;
         }
         #push-toast-link {
-            color: #7eb8ff;
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #28a745;
             text-decoration: none;
+        }
+        #push-toast-link:hover {
+            text-decoration: underline;
         }
         #push-toast-link[hidden] {
             display: none;
@@ -44,8 +92,18 @@
 <div id="root"></div>
 <div id="push-toast" hidden>
     <button type="button" id="push-toast-close" aria-label="Закрыть">×</button>
+    <div class="push-toast__head">
+        <div class="push-toast__icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="1.5"/>
+                <path d="M3 12h18M12 3c2.5 2.8 4 6 4 9s-1.5 6.2-4 9M12 3c-2.5 2.8-4 6-4 9s1.5 6.2 4 9"
+                      stroke="#fff" stroke-width="1.5"/>
+            </svg>
+        </div>
+        <span class="push-toast__site" id="push-toast-site">site.by</span>
+    </div>
     <strong id="push-toast-title"></strong>
-    <p id="push-toast-body" style="margin:8px 0"></p>
+    <p id="push-toast-body"></p>
     <a id="push-toast-link" href="#" target="_blank" rel="noopener">Открыть</a>
 </div>
 <button
@@ -57,7 +115,7 @@
 </button>
 <script
         charset="UTF-8"
-        src="https://vue-sms.dev.progmateq.com/upload/js/push-subscribe.js"
+        src="https://app-sms.dev.progmateq.com/upload/js/push-subscribe.js"
         data-api-base="https://vue-sms.dev.progmateq.com"
         data-embed-secret="BzbZBAdnEU3OctyKXkIE7iBFjVQ1LsYeN5YtSvi1"
         data-sw-url="/push-sw.js"
@@ -66,7 +124,12 @@
         async
 ></script>
 <script>
-    if ('serviceWorker' in navigator) {
+    (function () {
+        var siteEl = document.getElementById('push-toast-site');
+        if (siteEl) {
+            siteEl.textContent = location.hostname.replace(/^www\./, '');
+        }
+        if (!('serviceWorker' in navigator)) return;
         navigator.serviceWorker.addEventListener('message', function (event) {
             if (!event.data || event.data.type !== 'PUSH_RECEIVED') return;
             var toast = document.getElementById('push-toast');
@@ -88,7 +151,6 @@
         document.getElementById('push-toast-close').addEventListener('click', function () {
             document.getElementById('push-toast').hidden = true;
         });
-        // Восстановить текст кнопки после F5
         navigator.serviceWorker.ready
             .then(function (reg) {
                 return reg.pushManager.getSubscription();
@@ -101,7 +163,7 @@
                 btn.textContent = 'Notifications enabled';
             })
             .catch(function () {});
-    }
+    })();
 </script>
 <script type="module" src="/src/main.tsx"></script>
 </body>
