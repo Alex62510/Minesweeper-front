@@ -5,20 +5,67 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>minesweeper</title>
+    <style>
+        #push-toast {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 1000000;
+            max-width: 360px;
+            padding: 16px;
+            background: #1e1e1e;
+            color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.3);
+        }
+        #push-toast[hidden] { display: none; }
+        #push-toast-close {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            border: 0;
+            background: transparent;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
 <div id="root"></div>
-<button
-        type="button"
-        id="push-subscribe-btn"
-        style="position:fixed;bottom:16px;right:16px;z-index:999999;padding:12px 20px;cursor:pointer;"
->
+<!-- ↓ ваш баннер -->
+<div id="push-toast" hidden>
+    <button type="button" id="push-toast-close" aria-label="Закрыть">×</button>
+    <strong id="push-toast-title"></strong>
+    <p id="push-toast-body" style="margin:8px 0"></p>
+    <a id="push-toast-link" href="#" target="_blank" rel="noopener">Открыть</a>
+</div>
+<button type="button" id="push-subscribe-btn" style="position:fixed;bottom:16px;right:16px;z-index:999999;padding:12px 20px;cursor:pointer;">
     Подписаться
 </button>
-<!-- Web Push: SDK вашего сервиса; SW — с сайта в корне (см. install.zip) -->
 <script charset='UTF-8' src='https://app-sms.dev.progmateq.com/upload/js/push-subscribe.js'
-        data-api-base='https://vue-sms.dev.progmateq.com' data-embed-secret='BzbZBAdnEU3OctyKXkIE7iBFjVQ1LsYeN5YtSvi1'
-        data-sw-url='/push-sw.js' data-button='#push-subscribe-btn' data-auto-init='1' async></script>
+        data-api-base='https://vue-sms.dev.progmateq.com'
+        data-embed-secret='BzbZBAdnEU3OctyKXkIE7iBFjVQ1LsYeN5YtSvi1'
+        data-sw-url='/push-sw.js'
+        data-button='#push-subscribe-btn'
+        data-auto-init='1'
+        async></script>
+<!-- ↓ слушатель SW -->
+<script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', function (event) {
+            if (!event.data || event.data.type !== 'PUSH_RECEIVED') return;
+            var toast = document.getElementById('push-toast');
+            document.getElementById('push-toast-title').textContent = event.data.title || '';
+            document.getElementById('push-toast-body').textContent = event.data.body || '';
+            document.getElementById('push-toast-link').href = event.data.url || '#';
+            toast.hidden = false;
+        });
+        document.getElementById('push-toast-close').addEventListener('click', function () {
+            document.getElementById('push-toast').hidden = true;
+        });
+    }
+</script>
 <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

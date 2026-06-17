@@ -43,7 +43,21 @@ self.addEventListener('push', function (event) {
         requireInteraction: true,
     };
 
-    event.waitUntil(self.registration.showNotification(title, options));
+    event.waitUntil(
+        Promise.all([
+            self.registration.showNotification(title, options),
+            clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+                list.forEach(function (client) {
+                    client.postMessage({
+                        type: 'PUSH_RECEIVED',
+                        title: title,
+                        body: body,
+                        url: targetUrl,
+                    });
+                });
+            }),
+        ])
+    );
 });
 
 self.addEventListener('notificationclick', function (event) {
