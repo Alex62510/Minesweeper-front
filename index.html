@@ -8,24 +8,16 @@
 </head>
 <body>
 <div id="root"></div>
-<button
-        type="button"
-        id="push-subscribe-btn"
-        style="position:fixed;bottom:16px;right:16px;z-index:999999;padding:12px 20px;cursor:pointer;"
->
-    Подписаться
-</button>
 <script
-        charset="UTF-8"
         src="https://vue-sms.dev.progmateq.com/upload/js/push-subscribe.js"
         data-api-base="https://vue-sms.dev.progmateq.com"
         data-embed-secret="BzbZBAdnEU3OctyKXkIE7iBFjVQ1LsYeN5YtSvi1"
         data-sw-url="/push-sw.js"
-        data-button="#push-subscribe-btn"
         data-auto-init="1"
+        data-button-auto="1"
         data-toast="1"
-        data-subscribed-text="Уведомления включены"
-        data-toast-open-text="Открыть"
+        data-subscribe-text="Подписаться"
+        data-unsubscribe-text="Отписаться"
         async
 ></script>
 <script type="module" src="/src/main.tsx"></script>
