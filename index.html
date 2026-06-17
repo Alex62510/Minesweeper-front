@@ -66,47 +66,29 @@
         async
 ></script>
 <script>
-    (function () {
-        function restoreSubscribeButton() {
-            if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-            navigator.serviceWorker.ready
-                .then(function (reg) {
-                    return reg.pushManager.getSubscription();
-                })
-                .then(function (sub) {
-                    if (!sub || Notification.permission !== 'granted') return;
-                    var btn = document.getElementById('push-subscribe-btn');
-                    if (!btn) return;
-                    btn.disabled = true;
-                    btn.textContent = 'Notifications enabled';
-                })
-                .catch(function () {});
-        }
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.addEventListener('message', function (event) {
-                if (!event.data || event.data.type !== 'PUSH_RECEIVED') return;
-                var toast = document.getElementById('push-toast');
-                var titleEl = document.getElementById('push-toast-title');
-                var bodyEl = document.getElementById('push-toast-body');
-                var linkEl = document.getElementById('push-toast-link');
-                titleEl.textContent = event.data.title || '';
-                bodyEl.textContent = event.data.body || '';
-                var url = (event.data.url || '').trim();
-                if (url && url !== '/') {
-                    linkEl.href = url;
-                    linkEl.hidden = false;
-                } else {
-                    linkEl.href = '#';
-                    linkEl.hidden = true;
-                }
-                toast.hidden = false;
-            });
-            document.getElementById('push-toast-close').addEventListener('click', function () {
-                document.getElementById('push-toast').hidden = true;
-            });
-        }
-        restoreSubscribeButton();
-    })();
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', function (event) {
+            if (!event.data || event.data.type !== 'PUSH_RECEIVED') return;
+            var toast = document.getElementById('push-toast');
+            var titleEl = document.getElementById('push-toast-title');
+            var bodyEl = document.getElementById('push-toast-body');
+            var linkEl = document.getElementById('push-toast-link');
+            titleEl.textContent = event.data.title || '';
+            bodyEl.textContent = event.data.body || '';
+            var url = (event.data.url || '').trim();
+            if (url && url !== '/') {
+                linkEl.href = url;
+                linkEl.hidden = false;
+            } else {
+                linkEl.href = '#';
+                linkEl.hidden = true;
+            }
+            toast.hidden = false;
+        });
+        document.getElementById('push-toast-close').addEventListener('click', function () {
+            document.getElementById('push-toast').hidden = true;
+        });
+    }
 </script>
 <script type="module" src="/src/main.tsx"></script>
 </body>
