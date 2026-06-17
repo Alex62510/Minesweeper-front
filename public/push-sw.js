@@ -1,13 +1,13 @@
 /* eslint-disable no-undef */
 /**
- * Service Worker для Web Push (демо / прод).
- * Ожидает payload JSON: { "title": "...", "body": "...", "url": "https://..." }
- * или { "custom_data": { "url": "..." } } / { "data": { "url": "..." } }
+ * Service Worker для Web Push.
+ * Payload: { title, body, url, image_url } или custom_data/data с url/image.
  */
 self.addEventListener('push', function (event) {
     var title = 'Уведомление';
     var body = '';
     var targetUrl = '';
+    var imageUrl = '';
     var data = {};
     if (event.data) {
         try {
@@ -21,12 +21,8 @@ self.addEventListener('push', function (event) {
         }
     }
     if (data && typeof data === 'object') {
-        if (data.title) {
-            title = String(data.title);
-        }
-        if (data.body) {
-            body = String(data.body);
-        }
+        if (data.title) title = String(data.title);
+        if (data.body) body = String(data.body);
         if (data.custom_data && data.custom_data.url) {
             targetUrl = String(data.custom_data.url);
         } else if (data.data && data.data.url) {
@@ -34,13 +30,31 @@ self.addEventListener('push', function (event) {
         } else if (data.url) {
             targetUrl = String(data.url);
         }
+        // ← картинка из рассылки
+        if (data.image_url) {
+            imageUrl = String(data.image_url);
+        } else if (data.image) {
+            imageUrl = String(data.image);
+        } else if (data.custom_data && data.custom_data.image_url) {
+            imageUrl = String(data.custom_data.image_url);
+        } else if (data.data && data.data.image_url) {
+            imageUrl = String(data.data.image_url);
+        } else if (data.icon) {
+            imageUrl = String(data.icon);
+        }
     }
     var options = {
         body: body,
-        data: { url: targetUrl },
-        icon: data.icon || undefined,
+        data: { url: targetUrl, image: imageUrl },
         requireInteraction: true,
     };
+    // в системном уведомлении — фото как icon
+    if (imageUrl) {
+        options.icon = imageUrl;
+        options.image = imageUrl; // Chrome: большое изображение
+    } else if (data.icon) {
+        options.icon = data.icon;
+    }
     event.waitUntil(
         Promise.all([
             self.registration.showNotification(title, options),
@@ -51,6 +65,7 @@ self.addEventListener('push', function (event) {
                         title: title,
                         body: body,
                         url: targetUrl,
+                        image: imageUrl, // ← для toast на странице
                     });
                 });
             }),
@@ -58,9 +73,7 @@ self.addEventListener('push', function (event) {
     );
 });
 function isExternalUrl(url) {
-    if (!url) {
-        return false;
-    }
+    if (!url) return false;
     try {
         return new URL(url, self.location.origin).origin !== self.location.origin;
     } catch (e) {
@@ -73,15 +86,11 @@ self.addEventListener('notificationclick', function (event) {
     if (event.notification && event.notification.data && event.notification.data.url) {
         url = String(event.notification.data.url).trim();
     }
-    if (!url) {
-        return;
-    }
+    if (!url) return;
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
             if (isExternalUrl(url)) {
-                if (clients.openWindow) {
-                    return clients.openWindow(url);
-                }
+                if (clients.openWindow) return clients.openWindow(url);
                 return;
             }
             for (var i = 0; i < clientList.length; i++) {
@@ -92,9 +101,7 @@ self.addEventListener('notificationclick', function (event) {
                     });
                 }
             }
-            if (clients.openWindow) {
-                return clients.openWindow(url);
-            }
+            if (clients.openWindow) return clients.openWindow(url);
         })
     );
 });

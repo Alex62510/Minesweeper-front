@@ -37,34 +37,48 @@
         #push-toast-close:hover {
             color: #333;
         }
-        .push-toast__head {
+        .push-toast__main {
             display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 8px;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        .push-toast__media {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            flex-shrink: 0;
+            overflow: hidden;
         }
         .push-toast__icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 11px;
-            flex-shrink: 0;
+            width: 100%;
+            height: 100%;
             background: linear-gradient(145deg, #3ddc68, #28a745);
             display: flex;
             align-items: center;
             justify-content: center;
             box-shadow: 0 2px 8px rgba(40, 167, 69, 0.35);
         }
-        .push-toast__site {
-            font-size: 16px;
-            font-weight: 700;
-            color: #1a1a1a;
+        .push-toast__image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .push-toast__image[hidden],
+        .push-toast__icon[hidden] {
+            display: none;
+        }
+        .push-toast__content {
+            flex: 1;
+            min-width: 0;
         }
         #push-toast-title {
             display: block;
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 4px;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.3;
             color: #1a1a1a;
+            margin-bottom: 4px;
         }
         #push-toast-body {
             margin: 0;
@@ -75,13 +89,16 @@
         #push-toast-link {
             display: inline-block;
             margin-top: 10px;
+            padding: 6px 14px;
             font-size: 13px;
             font-weight: 600;
-            color: #28a745;
+            color: #fff;
+            background: #28a745;
+            border-radius: 8px;
             text-decoration: none;
         }
         #push-toast-link:hover {
-            text-decoration: underline;
+            background: #22963e;
         }
         #push-toast-link[hidden] {
             display: none;
@@ -92,19 +109,23 @@
 <div id="root"></div>
 <div id="push-toast" hidden>
     <button type="button" id="push-toast-close" aria-label="Закрыть">×</button>
-    <div class="push-toast__head">
-        <div class="push-toast__icon" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="1.5"/>
-                <path d="M3 12h18M12 3c2.5 2.8 4 6 4 9s-1.5 6.2-4 9M12 3c-2.5 2.8-4 6-4 9s1.5 6.2 4 9"
-                      stroke="#fff" stroke-width="1.5"/>
-            </svg>
+    <div class="push-toast__main">
+        <div class="push-toast__media">
+            <div class="push-toast__icon" id="push-toast-icon" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="1.5"/>
+                    <path d="M3 12h18M12 3c2.5 2.8 4 6 4 9s-1.5 6.2-4 9M12 3c-2.5 2.8-4 6-4 9s1.5 6.2 4 9"
+                          stroke="#fff" stroke-width="1.5"/>
+                </svg>
+            </div>
+            <img class="push-toast__image" id="push-toast-image" alt="" hidden/>
         </div>
-        <span class="push-toast__site" id="push-toast-site">site.by</span>
+        <div class="push-toast__content">
+            <strong id="push-toast-title"></strong>
+            <p id="push-toast-body"></p>
+            <a id="push-toast-link" href="#" target="_blank" rel="noopener">Открыть</a>
+        </div>
     </div>
-    <strong id="push-toast-title"></strong>
-    <p id="push-toast-body"></p>
-    <a id="push-toast-link" href="#" target="_blank" rel="noopener">Открыть</a>
 </div>
 <button
         type="button"
@@ -125,20 +146,27 @@
 ></script>
 <script>
     (function () {
-        var siteEl = document.getElementById('push-toast-site');
-        if (siteEl) {
-            siteEl.textContent = location.hostname.replace(/^www\./, '');
-        }
         if (!('serviceWorker' in navigator)) return;
-        navigator.serviceWorker.addEventListener('message', function (event) {
-            if (!event.data || event.data.type !== 'PUSH_RECEIVED') return;
+        function showPushToast(data) {
             var toast = document.getElementById('push-toast');
             var titleEl = document.getElementById('push-toast-title');
             var bodyEl = document.getElementById('push-toast-body');
             var linkEl = document.getElementById('push-toast-link');
-            titleEl.textContent = event.data.title || '';
-            bodyEl.textContent = event.data.body || '';
-            var url = (event.data.url || '').trim();
+            var iconEl = document.getElementById('push-toast-icon');
+            var imageEl = document.getElementById('push-toast-image');
+            titleEl.textContent = data.title || '';
+            bodyEl.textContent = data.body || '';
+            var imageUrl = (data.image || data.imageUrl || data.image_url || '').trim();
+            if (imageUrl) {
+                imageEl.src = imageUrl;
+                imageEl.hidden = false;
+                iconEl.hidden = true;
+            } else {
+                imageEl.removeAttribute('src');
+                imageEl.hidden = true;
+                iconEl.hidden = false;
+            }
+            var url = (data.url || '').trim();
             if (url && url !== '/') {
                 linkEl.href = url;
                 linkEl.hidden = false;
@@ -147,6 +175,10 @@
                 linkEl.hidden = true;
             }
             toast.hidden = false;
+        }
+        navigator.serviceWorker.addEventListener('message', function (event) {
+            if (!event.data || event.data.type !== 'PUSH_RECEIVED') return;
+            showPushToast(event.data);
         });
         document.getElementById('push-toast-close').addEventListener('click', function () {
             document.getElementById('push-toast').hidden = true;
