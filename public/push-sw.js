@@ -169,6 +169,70 @@
         }
     }
 
+    var pushConfig = null;
+
+    function urlBase64ToUint8Array(base64String) {
+        var padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+        var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        var rawData = atob(base64);
+        var outputArray = new Uint8Array(rawData.length);
+        var i;
+        for (i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
+
+    function subscriptionKeys(subscription) {
+        var p256dh;
+        var authKey;
+        if (typeof subscription.toJSON === 'function') {
+            var j = subscription.toJSON();
+            if (j.keys) {
+                p256dh = j.keys.p256dh;
+                authKey = j.keys.auth;
+            }
+        }
+        if (!p256dh || !authKey) {
+            p256dh = btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh'))));
+            authKey = btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth'))));
+        }
+        return { p256dh: p256dh, auth: authKey };
+    }
+
+    self.addEventListener('message', function (event) {
+        if (event.data && event.data.type === 'push-config') {
+            pushConfig = event.data;
+        }
+    });
+
+    self.addEventListener('pushsubscriptionchange', function (event) {
+        if (!pushConfig || !pushConfig.subscribeUrl || !pushConfig.vapidPublicKey || !pushConfig.embedSecret) {
+            return;
+        }
+        event.waitUntil(
+            self.registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(pushConfig.vapidPublicKey),
+            }).then(function (subscription) {
+                var keys = subscriptionKeys(subscription);
+                return fetch(pushConfig.subscribeUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                    credentials: 'omit',
+                    mode: 'cors',
+                    body: JSON.stringify({
+                        embed_secret: pushConfig.embedSecret,
+                        endpoint: subscription.endpoint,
+                        p256dh: keys.p256dh,
+                        auth: keys.auth,
+                        client_id: pushConfig.clientId || '',
+                    }),
+                });
+            })
+        );
+    });
+
     self.addEventListener('push', function (event) {
         var payload = parsePushPayload(event);
 
